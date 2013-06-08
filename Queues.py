@@ -212,7 +212,7 @@ class SPQueues:
                 pass
                 #print 'node received'
             else:
-                self.innerQueue[dstHopPair] = self.innerQueue.get(dst,list())
+                self.innerQueue[dstHopPair] = self.innerQueue.get(dstHopPair,list())
                 self.innerQueue[dstHopPair].append(packet)
 
     def callbackFunc(self,paramDict):
@@ -220,6 +220,149 @@ class SPQueues:
 
 
 
+
+class NewQueues:
+    def __init__(self):
+        self.neigbourQueue = dict()
+
+    
+    def __getitem__(self,key):
+        return self.neigbourQueue[key]
+    
+    def __setitem__(self,key,value):
+        self.neigbourQueue[key] = value
+    
+    def __repr__(self):
+        return repr([(key,len(item)) \
+                        for key, item in self.neigbourQueue.iteritems()\
+                         if len(item) != 0])
+
+    def setQueues(self,args):
+        for key in args['neighbours'].iterkeys():
+            self.neigbourQueue[key] = []
+
+    def clear(self):
+        self.neigbourQueue.clear()
+
+
+    def get(self,key,value=[]):
+        return self.neigbourQueue.get(key,value)
+
+
+    def calcWeightWith(self,queues,myID,nbrID):
+
+        weightList = [(dst,len(queue) - len(queues.get(dst,[]))) \
+                          for dst,queue in self.neigbourQueue.iteritems()]
+        weightList = [(nbrID,len(self.neigbourQueue.get(nbrID,[]))-\
+                           len(queues.get(myID,[])))]
+
+
+        
+        newList = [pair for pair in weightList \
+                       # if 1) weight not equal 0, 
+                       # and when 1) cant ensure \
+                       # 2) make the queue for destination is not empty
+                       if pair[1] != 0 or len(self.neigbourQueue[pair[0]])]
+        return newList
+
+    def getPacket(self,paramDict):
+        nbr = paramDict['nbr']
+        rate = paramDict['rate']
+        packets = []
+        while len(self.neigbourQueue[nbr]) > 0 and rate > 0:
+            rate -= 1
+
+            p = self.neigbourQueue[nbr].pop()
+            dst = p.getDst()
+            packets.append(p)
+        
+        return packets
+
+    def putPacket(self,packets,paramDict):
+        nbr = paramDict['nbr']
+
+        for packet in packets:
+            if packet.getDst() == nbr:
+                pass
+            else:
+                dst = packet.getDst()
+                packet.decreaseRemainHopNum()
+                remainHopNum = packet.getRemainHopNum()
+
+                
+
+                neigbourList = [(nbr, len(queue)) \
+                            for nbr,queue in self.neigbourQueue.iteritems() \
+                            if remainHopNum >= self.distance(nbr,dst)]
+                neigbourList.sort(key=lambda x:x[1],reverse=False)
+                #print neigbourList
+
+
+                link = neigbourList.pop(0)[0]
+
+                self.neigbourQueue[link].append(packet)
+
+    def distance(self,src,dst):
+        return abs(src[0]-dst[0])+abs(src[1]-dst[1])
+
+    def callbackFunc(self,paramDict):
+        pass
+
+class TestQueues(NewQueues):
+    def __init__(self):
+        super(TestQueues,self).__init__()
+
+    def putPacket(self,packets,paramDict):
+        nbr = paramDict['nbr']
+
+        for packet in packets:
+            if packet.getDst() == nbr:
+                pass
+            else:
+                dst = packet.getDst()
+                packet.decreaseRemainHopNum()
+                remainHopNum = packet.getRemainHopNum()
+
+                
+
+                neigbourList = [(nbr, len(queue), self.distance(nbr,dst)) \
+                            for nbr,queue in self.neigbourQueue.iteritems() \
+                            if remainHopNum >= self.distance(nbr,dst)]
+                neigbourList.sort(key=lambda x:x[1],reverse=False)
+                #print neigbourList
+                tempList = [i for i in neigbourList if neigbourList[0][1] == i[1]]
+                tempList.sort(key=lambda x:x[2],reverse=False)
+                
+
+                link = tempList.pop(0)[0]
+
+                self.neigbourQueue[link].append(packet)
+
+class TestSquareQueues(NewQueues):
+    def __init__(self):
+        super(TestSquareQueues,self).__init__()
+
+    def putPacket(self,packets,paramDict):
+        nbr = paramDict['nbr']
+
+        for packet in packets:
+            if packet.getDst() == nbr:
+                pass
+            else:
+                dst = packet.getDst()
+                packet.decreaseRemainHopNum()
+                remainHopNum = packet.getRemainHopNum()
+
+                
+
+                neigbourList = [(nbr, len(queue)**2+self.distance(nbr,dst)**2) \
+                            for nbr,queue in self.neigbourQueue.iteritems() \
+                            if remainHopNum >= self.distance(nbr,dst)]
+                neigbourList.sort(key=lambda x:x[1],reverse=False)
+
+                link = neigbourList.pop(0)[0]
+
+                self.neigbourQueue[link].append(packet)
 
 if __name__ == "__main__":
     queues = Queues()

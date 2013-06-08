@@ -4,10 +4,10 @@ import pylab as py
 from Flow import Flow
 from Simulator import Simulator
 from Packet import PacketFactory
-from Queues import Queues,ShadowQueues,SPQueues
+from Queues import Queues,ShadowQueues,SPQueues,NewQueues,TestQueues,TestSquareQueues
 from NetworkFactory import GridNetworkFactory
 from LinkRateGenerator import ConstLinkRateGenerator
-from Node import makeSimpleNode,makeMNode,makeOMNode,makeCNode,makePNode,SPNode
+from Node import makeSimpleNode,makeMNode,makeOMNode,makeCNode,makePNode,SPNode,makeNewNode
 
 gobalRateList = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
 gobalGridNetworkFactory = GridNetworkFactory(makeMNode(1),Queues)
@@ -114,9 +114,67 @@ def OrdTest():
     print stat
 
 
+def oneRoundDelay(step = 10000):
+    injectRate = 0.9
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    factory.constructNetwork(6,6)\
+        .setFlow(Flow((0,0),(0,5),injectRate))\
+        .setFlow(Flow((5,0),(5,5),injectRate))\
+        .setFlow(Flow((2,0),(3,5),injectRate))
+
+    network = factory.getNetwork()
+
+    packetFactory = PacketFactory()
+    simulator = \
+        Simulator(network,step,ConstLinkRateGenerator(1),packetFactory)
+    simulator.run()
+    #simulator.printNetwork()
+    stat = simulator.getStaticsInfo()
+    print stat['aveDelay']
+    packetPool = sorted(stat['packetPool'],key=lambda p: p.getID)
+
+
+    
+    py.subplot(211)
+    py.vlines([p.getCreateTime() for p in packetPool],[1],[p.getDelay() for p in packetPool],'r')
+    py.xlabel('Packet create time(bp with $\lambda$ = 0.9)')
+    py.ylabel('delay')
+    py.grid(True)
+
+
+
+
+    injectRate = 0.9
+    factory = GridNetworkFactory(makeMNode(2),Queues)
+    factory.constructNetwork(6,6)\
+        .setFlow(Flow((0,0),(0,5),injectRate))\
+        .setFlow(Flow((5,0),(5,5),injectRate))\
+        .setFlow(Flow((2,0),(3,5),injectRate))
+
+    network = factory.getNetwork()
+
+    packetFactory = PacketFactory()
+    simulator = \
+        Simulator(network,step,ConstLinkRateGenerator(1),packetFactory)
+    simulator.run()
+    #simulator.printNetwork()
+
+    stat = simulator.getStaticsInfo()
+    print stat['aveDelay']
+    packetPool = sorted(stat['packetPool'],key=lambda p: p.getID)
+
+    py.subplot(212)
+    py.vlines([p.getCreateTime() for p in packetPool],[1],[p.getDelay() for p in packetPool],'b')
+    py.xlabel('Packet create time (m=2 with $\lambda$ = 0.9)')
+    py.ylabel('delay')
+    py.grid(True)
+    py.savefig('packetDelayInOneRound_09')
+    py.show()
+
+
 def CounterTest(step = 10000):
-    injectRate = 0.5
-    factory = GridNetworkFactory(makePNode(0.6),Queues)
+    injectRate = 0.9
+    factory = GridNetworkFactory(makeMNode(4),Queues)
     factory.constructNetwork(6,6)\
         .setFlow(Flow((0,0),(0,5),injectRate))\
         .setFlow(Flow((5,0),(5,5),injectRate))\
@@ -132,8 +190,6 @@ def CounterTest(step = 10000):
     stat = simulator.getStaticsInfo()
     print stat
 
-
-
 if __name__ == "__main__":
  
     #mainProcessCtrl([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],3)
@@ -144,4 +200,5 @@ if __name__ == "__main__":
 
     CounterTest()
     #learningVsPressure()
+    #oneRoundDelay()
 

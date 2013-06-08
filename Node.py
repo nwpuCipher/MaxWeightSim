@@ -200,7 +200,7 @@ class CNode(Node):
     def __init__(self,ID,flow,queuesType,m):
         super(CNode,self).__init__(ID,flow,queuesType)
         self.m = m
-        
+        self.isLearn = False
         self.counterTable = dict()
         self.mValue = dict()
 
@@ -219,6 +219,9 @@ class CNode(Node):
         return packets
         
     def callbackFunc(self,**paramDict):
+        if self.isLearn == True:
+            return 
+        else: self.isLearn = True
         for dst, neigbours in self.counterTable.iteritems():
 
             sortedList =\
@@ -412,16 +415,18 @@ class SPNode:
                          dst=self.flow.getDestination())\
                for i in range(np.random.poisson(self.flow.getGenerateRate()))]
 
-        
+
         dst = self.flow.getDestination()
         nbr = self.flow.getSource()
         hop = self.queues.distance(self.flow.getDestination(),\
                                        self.flow.getSource())
-        tempList = sorted([((dst,h),1*h +len(self.queues.get((dst,h),[])))\
-                    for h in range(hop,35)],\
+        tempList = sorted([((dst,h),10*h +len(self.queues.get((dst,h),[])))\
+                    for h in range(hop,36)],\
                           key=lambda x:x[1])
-        #dstIDandQueue = (self.flow.getDestination(), 35-1)
+
         dstIDandQueue = tempList[0][0]
+
+
 
         self.queues.putPacket(packets,\
                                   {'dst':self.flow.getDestination(),\
@@ -464,7 +469,7 @@ class SPNode:
     def __getBestDstAndWeightIn(self,weightList,**params):
         if len(weightList) != 0:
             rd.shuffle(weightList)
-            weightList.sort(key=lambda x:x[1], reverse=True)
+            weightList.sort(key=lambda x:x[-1], reverse=True)
             return weightList.pop(0)
         else:
             return None
@@ -473,7 +478,107 @@ class SPNode:
     def __repr__(self):
         return '<'+'id: '+ repr(self.id) + \
             ' with ' + str(len(self.neigbours)) + ' neighbours ' + \
-            repr(self.flow) + '>'
+            repr(self.flow) + '>' + ' '+ repr(self.queues)
+
+
+
+
+class NewNode:
+    def __init__(self,ID,flow=None, queuesType=Queues,shortRate=0.8):
+        self.id = ID
+        self.setFlow(flow)
+        self.shortPathRate = shortRate
+        self.neigbours = dict()
+
+        self.queues = queuesType()
+
+
+    def setQueues(self,**args):
+        #print args
+        args['neighbours'] = self.neigbours
+        self.queues.setQueues(args)
+
+    def hasFlow(self):
+        return self.flow is not None
+
+    def setFlow(self,flow):
+        if flow is not None:
+            assert flow.source == self.id,\
+                "flow's source must same with node id"
+            assert flow.destination != self.id,\
+                "flow's destination must different with node id"
+        self.flow = flow
+
+    def injectNewFlow(self,currentStep,getPacket):
+        tSrc = self.flow.getSource()
+        tDst = self.flow.getDestination()
+        packets = [getPacket(currentStep,src=tSrc,\
+                         dst=tDst)\
+               for i in range(np.random.poisson(self.flow.getGenerateRate()))]
+        shortestHopNum = self.queues.distance(tSrc,tDst)
+        num = int(np.ceil(shortestHopNum / self.shortPathRate))
+        for p in packets:
+            p.setRemainHopNum(num)
+        self.queues.putPacket(packets,\
+                                  {'dst':tDst,\
+                                       'nbr':tSrc} )
+
+
+
+    def calcNeighbourWeight(self):
+        weightEdges = dict()
+        for neigbour,node in self.neigbours.iteritems():
+            dstAndWeight = self.__calcDstAndWeightWith(node)
+            if dstAndWeight is not None:    
+                weightEdges[neigbour] = dstAndWeight
+
+        return weightEdges
+
+
+    def sendPackets(self,**paramDict):
+
+        return self.queues.getPacket(paramDict)
+
+    def receivePackets(self,packets,**params):
+        self.queues.putPacket(packets,params)
+
+    def callbackFunc(self,**param):
+        self.queues.callbackFunc(param)
+
+
+    def __calcDstAndWeightWith(self,node):
+        assert node != self \
+            and node.id != self.id, \
+            "A node cant calc Weith with itself"
+        weightList = self.queues.calcWeightWith(node.queues,self.id,node.id)
+
+        #print weightList
+        # all the algorithm goes to this func
+        return self.__getBestDstAndWeightIn(weightList =weightList,\
+                                                src=self.id,nbr=node.id)
+
+    def __getBestDstAndWeightIn(self,weightList,**params):
+        nbr = params['nbr']
+
+        if len(weightList) != 0:
+            for pair in weightList:
+                if pair[0] == nbr:
+  
+                    return pair
+        else:
+            return None
+
+    
+    def __repr__(self):
+        return '<'+'id: '+ repr(self.id) + \
+            ' with ' + str(len(self.neigbours)) + ' neighbours ' + \
+            repr(self.flow) + '>\n' +repr(self.queues)
+
+
+def makeNewNode(rate):
+    def makeNode(ID,flow,queuesType):
+        return NewNode(ID,flow,queuesType,rate)
+    return makeNode
 
 
 

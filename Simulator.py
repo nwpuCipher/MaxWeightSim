@@ -25,6 +25,7 @@ class Simulator:
     def run(self,flag=False):
         self.networkInit()
         while self.currentStep < self.maxStep:
+            #print self.currentStep
             self.currentStep += 1
             self.calcMaxWeight()
             self.schedule()
@@ -57,8 +58,10 @@ class Simulator:
         aveDelay = sum(packet.getDelay() for packet in self.packetPool)/float(len(self.packetPool))
         aveDRate = len(self.packetPool) / float(self.packetFactory.id)
         aveHop = sum(packet.getHopNum() for packet in self.packetPool)/float(len(self.packetPool))
+        aveBacklog = round((self.packetFactory.id - len(self.packetPool)) / float(len(self.network)))
         statics = {'aveDelay':aveDelay,'aveDRate':aveDRate,'aveHop':aveHop,\
-                       'recPktNbr':len(self.packetPool),'gntPtkNbr':self.packetFactory.id}
+                       'recPktNbr':len(self.packetPool),'gntPtkNbr':self.packetFactory.id,\
+                       'aveBacklog':aveBacklog}#,'packetPool':self.packetPool}
         return statics
     
 
@@ -129,9 +132,11 @@ class Simulator:
 
         if nbrID not in self.weightNetwork[srcID]:
             srcID,nbrID = nbrID,srcID
+
         dstID = self.weightNetwork[srcID].get(nbrID)[0]
 
         dstIDandQueue = self.weightNetwork[srcID].get(nbrID)[1]
+
 
         packets = self.network[srcID].sendPackets(src=srcID,nbr=nbrID,dst=dstID,rate=linkRate,)
         self.__statProcess(packets,src=srcID,dst=dstID,nbr=nbrID)
@@ -140,10 +145,14 @@ class Simulator:
         
 
     def __statProcess(self,packets,**params):
+        
+        
+        
         for packet in packets:
             packet.addHopNum()
-            
+            #print 'params', params
             if packet.getDst() == params['nbr']:
+                #print '----recved'
                 self.packetPool.append(packet.setDelay(self.currentStep))
 
 

@@ -9,6 +9,8 @@ class Packet:
         self.src = src
         self.dst = dst
 
+        self.remainHopNum = 0
+
     def setCreateTime(self,time):
         self.createTime = time
         return self
@@ -45,11 +47,28 @@ class Packet:
         return self.src
 
     def setDelay(self,currentTime):
+        self.arrivalTime = currentTime
         self.delay = currentTime - self.createTime
         return self
 
     def getDelay(self):
         return self.delay
+
+    def getArrivalTime(self):
+        return self.arrivalTime
+
+    def setRemainHopNum(self,num):
+        assert num >= 1, 'remaining hop num >= 1 at least'
+        self.remainHopNum = num
+        return self
+
+    def getRemainHopNum(self):
+        return self.remainHopNum
+
+    def decreaseRemainHopNum(self):
+        assert self.remainHopNum > 0, 'this should not happen'
+        self.remainHopNum -= 1
+        return self
 
     def __repr__(self):
         return "<id:%d ctime:%d hnum:%d"\

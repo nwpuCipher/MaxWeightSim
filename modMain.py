@@ -4,10 +4,10 @@ import pylab as py
 from Flow import Flow
 from Simulator import Simulator
 from Packet import PacketFactory
-from Queues import Queues,ShadowQueues,SPQueues
+from Queues import Queues,ShadowQueues,SPQueues,NewQueues,TestQueues,TestSquareQueues
 from NetworkFactory import GridNetworkFactory
 from LinkRateGenerator import ConstLinkRateGenerator
-from Node import makeSimpleNode,makeMNode,makeOMNode,makeCNode,makePNode,SPNode
+from Node import makeSimpleNode,makeMNode,makeOMNode,makeCNode,makePNode,SPNode,makeNewNode
 
 gobalRateList = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
 gobalGridNetworkFactory = GridNetworkFactory(makeMNode(1),Queues)
@@ -74,11 +74,12 @@ def OMNodeVSMNodeTest():
 def Test():
     factory = GridNetworkFactory(makeSimpleNode(),Queues)
     result = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+    #print result
     py.plot(gobalRateList,result,'-o',label ='bp')
 
-    factory = GridNetworkFactory(makeSimpleNode(),ShadowQueues)
-    result = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
-    py.plot(gobalRateList,result,'-v',label ='sq')
+    #factory = GridNetworkFactory(makeSimpleNode(),ShadowQueues)
+    #result = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+    #py.plot(gobalRateList,result,'-v',label ='sq')
 
     #factory = GridNetworkFactory(makeOMNode(1),Queues)
     #result = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
@@ -89,9 +90,9 @@ def Test():
     #py.plot(gobalRateList,result,'-*',label ='mm=2')
     
 
-    factory = GridNetworkFactory(makeMNode(4),ShadowQueues)
-    result = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
-    py.plot(gobalRateList,result,'-s',label ='ms=4')
+    #factory = GridNetworkFactory(makeMNode(4),ShadowQueues)
+    #result = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+    #py.plot(gobalRateList,result,'-s',label ='ms=4')
     
     py.legend(loc=0)
     py.show()
@@ -262,6 +263,289 @@ def newTest():
         py.savefig('newTest_'+item)
         py.close()
 
+def NewQueuesTest():
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    resultBP = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeNewNode(1),NewQueues)
+    resultLQ = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(SPNode,SPQueues)
+    resultLQ2 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeNewNode(0.8),NewQueues)
+    resultLQ3 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+    
+    for item in ['aveDelay','aveDRate']:
+        
+        entry = [resultBP[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-o',label ='bp')
+    
+        entry = [resultLQ[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-v',label ='nq=1')
+
+        entry = [resultLQ3[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-p',label ='nq=0.7')
+        
+        entry = [resultLQ2[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-x',label ='sp=1')
+
+
+        
+        
+        py.legend(loc=0)
+        py.savefig('newQueuesTest_'+item)
+        py.close()
+
+def NewQueuesWithLimitsTest():
+
+    results = []
+    for rate in [0.2,0.4,0.8,1]:
+        factory = GridNetworkFactory(makeNewNode(rate),NewQueues)
+        result = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+        results.append((rate,result))
+    
+    for item in ['aveDelay','aveDRate']:
+        for rate,result in results:
+            entry = [result[key][item] for key in gobalRateList]
+            py.plot(gobalRateList,entry,label ='nq=%.1f'%rate)
+   
+        
+        py.legend(loc=0)
+        py.savefig('newQueuesTest_differentLimits_'+item)
+        py.close()
+
+def paperOneTestSA():
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    resultBP = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+
+    factory = GridNetworkFactory(makeMNode(2),Queues)
+    resultLQ3 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeMNode(4),Queues)
+    resultLQ4 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeMNode(6),Queues)
+    resultLQ5 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    labels = {'aveDelay':'Average end-to-end delay',\
+                  'aveDRate':'Delivery rate',\
+                  'aveHop':'Average hop count',\
+                  'aveBacklog':'Per-node queue lengths'}
+
+    for item in ['aveDelay','aveDRate','aveHop','aveBacklog']:
+        
+        entry = [resultBP[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-o',label ='bp')
+    
+        
+        entry = [resultLQ3[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-p',label ='M=2')
+        
+        entry = [resultLQ4[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-x',label ='M=4')
+
+        entry = [resultLQ5[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-x',label ='M=6')
+        
+        py.xlabel("$\lambda$")
+        py.ylabel(labels[item])
+        py.legend(loc=0)
+        py.savefig('PaperOneTest_sameAlgorithms_'+labels[item])
+        py.close()
+
+
+def paperOneTestDA():
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    resultBP = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+
+    factory = GridNetworkFactory(SPNode,SPQueues)
+    resultLQ2 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeMNode(4),Queues)
+    resultLQ3 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    labels = {'aveDelay':'Average end-to-end delay',\
+                  'aveDRate':'Delivery rate',\
+                  'aveHop':'Average hop count',\
+                  'aveBacklog':'Per-node queue lengths'}
+
+    for item in ['aveDelay','aveDRate','aveHop','aveBacklog']:
+        
+        entry = [resultBP[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-o',label ='bp')
+    
+        
+        entry = [resultLQ2[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-x',label ='K=10')
+        
+        entry = [resultLQ3[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-p',label ='M=4')
+
+        
+        py.xlabel("$\lambda$")
+        py.ylabel(labels[item])
+        py.grid
+        py.legend(loc=0)
+        py.savefig('PaperOneTest_differentAlgorithms_other_'+labels[item])
+        py.close()
+
+
+def PaperTwoTest_onePassLearningVsPressure():
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    resultBP = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeCNode(2),Queues)
+    resultLQ = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    labels = {'aveDelay':'Average end-to-end delay',\
+                  'aveDRate':'Delivery rate',\
+                  'aveHop':'Average hop count',\
+                  'aveBacklog':'Per-node queue lengths'}
+    for item in ['aveDelay','aveDRate','aveHop','aveBacklog']:
+        
+        entry = [resultBP[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-o',label ='bp')
+    
+        entry = [resultLQ[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-v',label ='M=2')
+        
+        
+        py.xlabel("$\lambda$")
+        py.ylabel(labels[item])
+        py.legend(loc=0)
+        py.savefig('PaperTwo_onePassLearning_'+item)
+        py.close()
+
+def PaperTwoTest_PerodicPossiblityLearningVsPressure():
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    resultBP = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makePNode(0.9),Queues)
+    resultLQ = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makePNode(0.5),Queues)
+    resultLQ2 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    labels = {'aveDelay':'Average end-to-end delay',\
+                  'aveDRate':'Delivery rate',\
+                  'aveHop':'Average hop count',\
+                  'aveBacklog':'Per-node queue lengths'}
+    
+    for item in ['aveDelay','aveDRate','aveHop','aveBacklog']:
+        
+        entry = [resultBP[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-o',label ='bp')
+    
+        entry = [resultLQ[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-v',label ='r=0.9')
+        
+        entry = [resultLQ2[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-x',label ='r=0.5')
+        
+        py.xlabel("$\lambda$")
+        py.ylabel(labels[item])
+        py.legend(loc=0)
+        py.savefig('PaperTwoTest_PerodicPossiblityLearning_with_redo_add_'+item)
+        py.close()
+def PaperTwoTest_DA():
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    resultBP = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(SPNode,SPQueues)
+    resultLQ = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makePNode(0.5),Queues)
+    resultLQ2 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    labels = {'aveDelay':'Average end-to-end delay',\
+                  'aveDRate':'Delivery rate',\
+                  'aveHop':'Average hop count',\
+                  'aveBacklog':'Per-node queue lengths'}
+    
+    for item in ['aveDelay','aveDRate','aveHop','aveBacklog']:
+        
+        entry = [resultBP[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-o',label ='bp')
+    
+        entry = [resultLQ[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-v',label ='K=10')
+        
+        entry = [resultLQ2[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-x',label ='r=0.5')
+        
+        py.xlabel("$\lambda$")
+        py.ylabel(labels[item])
+        py.legend(loc=0)
+        py.savefig('PaperTwoTest_DA_'+item)
+        py.close()
+
+
+def PaperThree_NewQueuesTest_DA():
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    resultBP = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+
+    factory = GridNetworkFactory(SPNode,SPQueues)
+    resultLQ2 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeNewNode(0.8),NewQueues)
+    resultLQ3 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+
+    labels = {'aveDelay':'Average end-to-end delay',\
+                  'aveDRate':'Delivery rate',\
+                  'aveHop':'Average hop count',\
+                  'aveBacklog':'Per-node queue lengths'}
+    
+    for item in ['aveDelay','aveDRate','aveHop','aveBacklog']:
+        
+        entry = [resultBP[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-o',label ='bp')
+    
+
+        entry = [resultLQ3[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-p',label ='r=0.8')
+        
+        entry = [resultLQ2[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-x',label ='K=10')
+
+
+        
+        py.xlabel("$\lambda$")
+        py.ylabel(labels[item])
+        py.legend(loc=0)
+        py.savefig('PaperThree_newQueuesTest_DA_'+item)
+        py.close()
+
+
+def PaperThree_NewQueuesWithLimitsTest_SA():
+
+    results = []
+    for rate in [0.2,0.4,0.8,1]:
+        factory = GridNetworkFactory(makeNewNode(rate),NewQueues)
+        result = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+        results.append((rate,result))
+    
+
+    labels = {'aveDelay':'Average end-to-end delay',\
+                  'aveDRate':'Delivery rate',\
+                  'aveHop':'Average hop count',\
+                  'aveBacklog':'Per-node queue lengths'}
+    
+    for item in ['aveDelay','aveDRate','aveHop','aveBacklog']:
+        for rate,result in results:
+            entry = [result[key][item] for key in gobalRateList]
+            py.plot(gobalRateList,entry,label ='r=%.1f'%rate)
+   
+        py.xlabel("$\lambda$")
+        py.ylabel(labels[item])
+        py.legend(loc=0)
+        py.savefig('PaperThree_SA_'+item)
+        py.close()
+
 def CounterTest(step = 10000):
     injectRate = 1
     factory = GridNetworkFactory(makeCNode(0),Queues)
@@ -281,8 +565,48 @@ def CounterTest(step = 10000):
 
 
 
+def otherTest():
+    factory = GridNetworkFactory(makeSimpleNode(),Queues)
+    resultBP = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeNewNode(0.8),NewQueues)
+    resultLQ = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeNewNode(0.8),TestQueues)
+    resultLQ2 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    factory = GridNetworkFactory(makeNewNode(0.8),TestSquareQueues)
+    resultLQ3 = mainProcessCtrl(factory=factory,rateList=gobalRateList,threadNum=3)
+
+    labels = {'aveDelay':'Average end-to-end delay',\
+                  'aveDRate':'Delivery rate',\
+                  'aveHop':'Average hop count',\
+                  'aveBacklog':'Per-node queue lengths'}
+    
+    for item in ['aveDelay','aveDRate','aveHop','aveBacklog']:
+        
+        entry = [resultBP[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-o',label ='bp')
+    
+        entry = [resultLQ[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-v',label ='original')
+        
+        entry = [resultLQ2[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-x',label ='doubleRule')
+
+        entry = [resultLQ3[key][item] for key in gobalRateList]
+        py.plot(gobalRateList,entry,'-+',label ='squareRule')
+        
+        py.xlabel("$\lambda$")
+        py.ylabel(labels[item])
+        py.grid(True)
+        py.legend(loc=0)
+        py.savefig('otherTest_'+item)
+        py.close()
+
 if __name__ == "__main__":
  
+
     #mainProcessCtrl([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],3)
     #rateVsDelayTest()
     #differentOMNodeModeTest()
@@ -293,5 +617,17 @@ if __name__ == "__main__":
     #PerodicPossiblityLearningVsPressure()
     #learningVsPressure()
 
-    newTest()
+    #newTest()
 
+    #NewQueuesTest()
+
+    
+    #NewQueuesWithLimitsTest()
+
+    #paperOneTestSA()
+   #PaperThree_NewQueuesWithLimitsTest_SA()
+    #otherTest()
+    paperOneTestDA()
+    #PaperTwoTest_DA()
+    #PaperThree_NewQueuesTest_DA()
+    #Test()
